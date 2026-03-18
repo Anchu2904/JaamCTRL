@@ -153,77 +153,85 @@ def run_simulation(
     else:
         controller = FixedTimeController()
 
+    # ── Close any existing TraCI connections (safety for Streamlit reruns) ───
+    try:
+        if traci.isLoaded():
+            traci.close()
+    except RuntimeError:
+        pass  # No active connection
+
     # ── Start TraCI ──────────────────────────────────────────────────────────
-    traci.start(_sumo_cmd(seed))
+    try:
+        traci.start(_sumo_cmd(seed))
 
-    gps_records: list[dict] = []
-    phase_log:   list[dict] = []
-    delays_per_vehicle:  dict[str, float] = {}
-    stops_per_vehicle:   dict[str, int]   = {}
-    arrived_count = 0
-    probe_vids: set = set()
+        gps_records: list[dict] = []
+        phase_log:   list[dict] = []
+        delays_per_vehicle:  dict[str, float] = {}
+        stops_per_vehicle:   dict[str, int]   = {}
+        arrived_count = 0
+        probe_vids: set = set()
 
-    # RL state
-    rl_obs = None
-    if mode == "rl" and ppo_model is not None:
-        rl_obs = _build_rl_obs()
-
-    for step in range(SIM_DURATION):
-        # ── Update probe set every 60 s ──────────────────────────────────────
-        if step % 60 == 0:
-            all_ids = traci.vehicle.getIDList()
-            probe_vids = select_probe_vehicles(list(all_ids))
-
-        # ── Collect GPS ──────────────────────────────────────────────────────
-        gps_records.extend(collect_gps_frame(step, probe_vids))
-
-        # ── Control signals ──────────────────────────────────────────────────
-        if mode == "rl" and ppo_model is not None and step % 10 == 0:
+        # RL state
+        rl_obs = None
+        if mode == "rl" and ppo_model is not None:
             rl_obs = _build_rl_obs()
-            action, _ = ppo_model.predict(rl_obs, deterministic=True)
-            _apply_rl_action(int(action))
-        elif controller is not None:
-            controller.step(step)
 
-        # ── Phase snapshot (for dashboard) ───────────────────────────────────
-        if step % 10 == 0:
-            phase_log.append(
-                {
-                    "step": step,
-                    **{tl: _safe_phase(tl) for tl in TL_IDS},
-                }
-            )
+        for step in range(SIM_DURATION):
+            # ── Update probe set every 60 s ──────────────────────────────────────
+            if step % 60 == 0:
+                all_ids = traci.vehicle.getIDList()
+                probe_vids = select_probe_vehicles(list(all_ids))
 
-        # ── Accumulate metrics ───────────────────────────────────────────────
-        for vid in traci.vehicle.getIDList():
-            delays_per_vehicle[vid] = _vehicle_delay(vid)
-            stops_per_vehicle[vid]  = stops_per_vehicle.get(vid, 0) + _vehicle_stops(vid)
+            # ── Collect GPS ──────────────────────────────────────────────────────
+            gps_records.extend(collect_gps_frame(step, probe_vids))
 
-        arrived_count += traci.simulation.getArrivedNumber()
+            # ── Control signals ──────────────────────────────────────────────────
+            if mode == "rl" and ppo_model is not None and step % 10 == 0:
+                rl_obs = _build_rl_obs()
+                action, _ = ppo_model.predict(rl_obs, deterministic=True)
+                _apply_rl_action(int(action))
+            elif controller is not None:
+                controller.step(step)
 
-        # ── Accident injection ───────────────────────────────────────────────
-        if step == accident_step:
-            _inject_accident()
+            # ── Phase snapshot (for dashboard) ───────────────────────────────────
+            if step % 10 == 0:
+                phase_log.append(
+                    {
+                        "step": step,
+                        **{tl: _safe_phase(tl) for tl in TL_IDS},
+                    }
+                )
 
-        # ── Advance simulation ───────────────────────────────────────────────
-        traci.simulationStep()
+            # ── Accumulate metrics ───────────────────────────────────────────────
+            for vid in traci.vehicle.getIDList():
+                delays_per_vehicle[vid] = _vehicle_delay(vid)
+                stops_per_vehicle[vid]  = stops_per_vehicle.get(vid, 0) + _vehicle_stops(vid)
 
-        if progress_cb:
-            progress_cb(step + 1, SIM_DURATION)
+            arrived_count += traci.simulation.getArrivedNumber()
 
-    traci.close()
+            # ── Accident injection ───────────────────────────────────────────────
+            if step == accident_step:
+                _inject_accident()
 
-    all_delays = list(delays_per_vehicle.values())
-    all_stops  = list(stops_per_vehicle.values())
+            # ── Advance simulation ───────────────────────────────────────────────
+            traci.simulationStep()
 
-    return SimResult(
-        mode=mode,
-        metrics=_build_metrics(all_delays, all_stops, arrived_count, mode, baseline_delay),
-        gps_df=build_dataframe(gps_records),
-        phase_log=phase_log,
-        raw_delays=all_delays,
-        raw_stops=all_stops,
-    )
+            if progress_cb:
+                progress_cb(step + 1, SIM_DURATION)
+
+        all_delays = list(delays_per_vehicle.values())
+        all_stops  = list(stops_per_vehicle.values())
+
+        return SimResult(
+            mode=mode,
+            metrics=_build_metrics(all_delays, all_stops, arrived_count, mode, baseline_delay),
+            gps_df=build_dataframe(gps_records),
+            phase_log=phase_log,
+            raw_delays=all_delays,
+            raw_stops=all_stops,
+        )
+    finally:
+        traci.close()
 
 
 # ── RL helpers ────────────────────────────────────────────────────────────────
