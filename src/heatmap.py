@@ -145,6 +145,7 @@ def heatmap_to_html(
     gps_df: pd.DataFrame,
     title: str = "Traffic Heatmap",
     zoom: int = 15,
+    mode: str | None = None,
 ) -> str:
     """
     Build a single-mode heatmap and return it as an HTML string.
@@ -154,9 +155,23 @@ def heatmap_to_html(
     gps_df : DataFrame with columns lat, lon, weight (and optionally speed_kmph)
     title  : shown in the layer control
     zoom   : initial map zoom level
+    mode   : gradient mode ("fixed", "adaptive", "rl") — auto-inferred from title if None
     """
+    # Auto-detect mode from title if not provided
+    if mode is None:
+        title_lower = title.lower()
+        if "fixed" in title_lower:
+            mode = "fixed"
+        elif "adaptive" in title_lower:
+            mode = "adaptive"
+        elif "rl" in title_lower or "ppo" in title_lower:
+            mode = "rl"
+        else:
+            mode = "default"
+    
     m = _base_map(zoom)
-    _heat_layer(gps_df, title, _GRADIENTS["default"]).add_to(m)
+    gradient = _GRADIENTS.get(mode, _GRADIENTS["default"])
+    _heat_layer(gps_df, title, gradient).add_to(m)
     _add_junction_markers(m)
     folium.LayerControl(position="topright", collapsed=False).add_to(m)
     return m._repr_html_()

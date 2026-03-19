@@ -11,3 +11,8 @@ toolbarMode = "viewer"
 
 [logger]
 level = "info"
+
+[server]
+maxUploadSize = 200
+enableXsrfProtection = true
+headless = true
