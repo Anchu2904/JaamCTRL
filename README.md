@@ -1,7 +1,7 @@
-# Jaam Ctrl (जाम Ctrl)
+# JaamCTRL
 
 > **AI Adaptive Traffic Signal Optimizer** for Indian Urban Corridors
-> KodeMaster.ai Hackathon 2026 – Open Innovation Track
+> KodeMaster.ai Hackathon 2026 – Open Innovation Track (Team:BRAT)
 
 ---
 
@@ -15,8 +15,7 @@ happening on the road.
 
 ## Our Solution
 
-Jaam Ctrl simulates a 3-intersection arterial corridor with authentic Indian traffic
-and applies two levels of AI:
+JaamCTRL simulates a 3-intersection arterial corridor (Cannaught Place, Delhi) with authentic Indian traffic and applies two levels of AI:
 
 | Level | Approach | Improvement |
 |---|---|---|
@@ -30,19 +29,12 @@ The system is designed for a clear **"before vs after"** demo with quantifiable 
 ## Demo
 
 > **Live demo video:** *(insert GIF/video link here)*
->
-> **Heatmap before (fixed):**
-> ![Fixed Heatmap](assets/heatmap_fixed.png)
->
-> **Heatmap after (adaptive):**
-> ![Adaptive Heatmap](assets/heatmap_adaptive.png)
 
----
 
 ## Architecture
 
 ```
-jaam-ctrl/
+jaamctrl/
 ├── app.py                    # Streamlit dashboard (entry point)
 ├── requirements.txt
 ├── src/
@@ -55,11 +47,13 @@ jaam-ctrl/
 │   ├── corridor.net.xml      # 3-intersection network (SUMO format)
 │   ├── corridor.rou.xml      # Indian traffic mix (60% 2-wheelers)
 │   └── corridor.sumocfg      # SUMO config
-├── models/                   # Saved PPO models (auto-created)
+├── models/                   # Saved PPO models
 └── assets/                   # Screenshots / GIFs for README
 ```
 
 ---
+## Tech Stack
+SUMO + TraCI | stable-baselines3 PPO | Folium neon heatmaps | Streamlit dashboard
 
 ## Setup Instructions
 
@@ -132,27 +126,14 @@ Open http://localhost:8501 in your browser.
 
 ---
 
-## Impact Story
-
-> *"Every morning, 4 crore urban Indian commuters waste 45 minutes stuck at
-> poorly-timed signals. Jaam Ctrl replaces fixed-cycle controllers with an AI
-> that listens to the road in real time — using the GPS signals already in
-> everyone's pocket. No new hardware. No camera infrastructure. Just smarter
-> software."*
-
-**Scaling path:**
-- Replace synthetic GPS with real Ola/Rapido probe data via public APIs
-- Deploy RL agent on cloud-connected Raspberry Pi at each signal box
-- Federated learning across city-wide signal network for continuous improvement
 
 ---
 
 ## Team
 
-*[Your Team Name] – KodeMaster.ai Hackathon 2026*
+*BRAT – Build with KodeMaster.ai Hackathon 2026*
 
 ---
 
 ## License
-
 MIT
